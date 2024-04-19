@@ -5,7 +5,12 @@ description = "live scraping congress.gov"
 authors = [
     {name = "Hunter Heidenreich", email = "hheidenreich@g.harvard.edu"},
 ]
-dependencies = []
+dependencies = [
+    "playwright>=1.43.0",
+    "pymongo>=4.6.3",
+    "ruff>=0.4.0",
+    "bs4>=0.0.2",
+]
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
