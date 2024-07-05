@@ -163,3 +163,5 @@ cython_debug/
 
 .venv
 pdm.lock
+
+.DS_Store
