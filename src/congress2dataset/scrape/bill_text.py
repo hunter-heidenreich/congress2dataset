@@ -18,19 +18,19 @@ async def scrape(congress: int, sleep: int, timeout: int = 60, logger: logging.L
             'house-bill', 'house-resolution', 'house-concurrent-resolution', 'house-joint-resolution',
             'senate-bill', 'senate-resolution', 'senate-concurrent-resolution', 'senate-joint-resolution'
         ]:
-            logger.info(f"Scraping {congress}th congress {bill_type} bills") if logger else None
+            logger.info(f"Scraping {congress}th congress {bill_type} bill texts") if logger else None
             i = 1
             run = True
             while run:
                 
                 # check if already have compressed html
-                if os.path.exists(f'data/{congress}/{bill_type}-{i:06d}/src.html.gz'):
+                if os.path.exists(f'data/117/{bill_type}-{i:06d}/bill_text.html.gz'):
                     logger.info(f"Bill {congress}-{bill_type}-{i} already scraped") if logger else None
                     i += 1
                     continue
             
                 # load the page
-                url = f"https://www.congress.gov/bill/{congress}th-congress/{bill_type}/{i}/all-info/?allSummaries=show"
+                url = f"https://www.congress.gov/bill/{congress}th-congress/{bill_type}/{i}/text/?format=txt"
                 logger.info(f"Loading {url}") if logger else None
                 await page.goto(url, wait_until="load", timeout=timeout * 1000)
                 logger.info(f"Loaded {page.url}") if logger else None
@@ -54,9 +54,9 @@ async def scrape(congress: int, sleep: int, timeout: int = 60, logger: logging.L
                 html = gzip.compress(html.encode("utf-8"))
                 
                 # save local copy
-                bill_dir = f'data/{congress}/{bill_type}-{i:06d}'
+                bill_dir = f'data/117/{bill_type}-{i:06d}'
                 os.makedirs(bill_dir, exist_ok=True)
-                with open(f'{bill_dir}/src.html.gz', 'wb') as f:
+                with open(f'{bill_dir}/bill_text.html.gz', 'wb') as f:
                     f.write(html)
                     
                 # sleep for a while
@@ -72,9 +72,6 @@ async def scrape(congress: int, sleep: int, timeout: int = 60, logger: logging.L
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--congress", type=int, default=117)
-    # parser.add_argument("--type", type=str, required=False, default="house-bill")
-    # parser.add_argument("--start", type=int, required=False, default=1)
-    # parser.add_argument("--end", type=int, required=False, default=1)
     parser.add_argument("--sleep", type=int, required=False, default=10)
 
     args = parser.parse_args()
@@ -85,7 +82,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s::%(name)s::%(levelname)s::%(message)s")
     handlers = [
-        logging.FileHandler(f"logs/scrape-{datetime.now().strftime('%Y%m%d%H%M%S')}.log"),
+        logging.FileHandler(f"logs/scrape-bill_text-{datetime.now().strftime('%Y%m%d%H%M%S')}.log"),
         logging.StreamHandler(),
     ]
     for handler in handlers:
@@ -93,7 +90,7 @@ if __name__ == "__main__":
         handler.setLevel(logging.INFO)
         logger.addHandler(handler)
         
-    logger.info(f"Scraping {args.congress}th congress bills")
+    logger.info(f"Scraping {args.congress}th congress bill texts")
     logger.info(args)
     asyncio.run(scrape(args.congress, args.sleep, logger=logger))
     logger.info(f"Scraping completed")
