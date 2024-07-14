@@ -849,6 +849,42 @@ def parse_related(
     return bill
 
 
+def parse_subjects(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
+    subjects = []
+
+    div = bill_soup.find("div", {"id": "subjects-content"})
+    if div is None:
+        bill["subjects"] = subjects
+        return bill
+
+    # first, the policy area (if present)
+    pa_div = div.find("div", class_="search-column-nav")
+    lis = pa_div.find_all("li")
+    if len(lis) == 0:
+        pass
+    elif len(lis) == 1:
+        assert (
+            bill["policy_area"] == lis[0].text.strip()
+        ), f"Policy area mismatch: {bill['policy_area']} vs {lis[0].text.strip()}"
+    else:
+        raise ValueError(f"Invalid number of policy areas: {len(lis)}")
+
+    # parse and validate subject div
+    sub_div = div.find("div", class_="search-column-main")
+    if sub_div is None:
+        bill["subjects"] = subjects
+        return bill
+
+    for li in sub_div.find_all("li"):
+        subjects.append(li.text.strip())
+
+    bill["subjects"] = subjects
+
+    return bill
+
+
 def parse(congress: int, logger: logging.Logger = None):
     client = MongoClient()
     db = client.federal
@@ -903,14 +939,7 @@ def parse(congress: int, logger: logging.Logger = None):
             bill = parse_consponsors(bill, bill_soup, logger=logger)
             bill = parse_committees(bill, bill_soup, logger=logger)
             bill = parse_related(bill, bill_soup, logger=logger)
-            # try:
-            #     bill = parse_related(bill, bill_soup, logger=logger)
-            # except Exception as e:
-            #     print(f"Error parsing: {e}")
-            #     print(bill["source"])
-            #     print()
-            #     print()
-            #     exit()
+            bill = parse_subjects(bill, bill_soup, logger=logger)
 
             # save updated bill
             collection.update_one(
