@@ -668,6 +668,110 @@ def parse_consponsors(
     return bill
 
 
+def parse_committees(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
+    """
+    Parse the committees of a bill from the given BeautifulSoup object and update the bill dictionary.
+
+    Args:
+        bill (dict): The bill dictionary to update with the parsed committees.
+        bill_soup (BeautifulSoup): The BeautifulSoup object representing the bill page.
+        logger (logging.Logger, optional): The logger object for logging messages. Defaults to None.
+
+    Returns:
+        dict: The updated bill dictionary.
+
+    Raises:
+        ValueError: If the columns in the committees table are invalid.
+    """
+    committees = []
+
+    div = bill_soup.find("div", {"id": "committees-content"})
+    if div is None:
+        bill["committees"] = committees
+        return bill
+
+    # parse and validate committees table columns
+    head = div.find("thead")
+    if head is None:
+        bill["committees"] = committees
+        return bill
+
+    header = head.find("tr")
+    if header is None:
+        bill["committees"] = committees
+        return bill
+
+    columns = header.find_all("th")
+    col_names = [col.text.strip().lower() for col in columns]
+    x = set(col_names)
+
+    body = div.find("tbody")
+
+    if x == {"committee / subcommittee", "date", "activity", "related documents"}:
+        key_upd = {
+            "committee / subcommittee": "name",
+            "date": "date",
+            "activity": "activity",
+            "related documents": "related documents",
+        }
+        keys = [key_upd[col] for col in col_names]
+
+        # each row in the committee table should be a <th> and 3 <td> elements per row
+        # the <th> is the committee name
+        # the first <td> is the date
+        # the second <td> is the activity
+        # the third <td> is the related documents
+
+        def _parse_date_time(date_str):
+            # Define the patterns
+            date_time_pattern = "%m/%d/%Y-%I:%M%p"
+            date_pattern = "%m/%d/%Y"
+
+            try:
+                # Try to parse the full datetime pattern
+                return datetime.strptime(date_str, date_time_pattern)
+            except ValueError:
+                # If it fails, try to parse just the date pattern
+                try:
+                    return datetime.strptime(date_str, date_pattern)
+                except ValueError:
+                    return None
+
+        # when <th> isn't present, the same committee/subcommittee is repeated
+        cur_th = None
+        cur_sub = False
+        for row in body.find_all("tr"):
+            if row.find("th"):
+                cur_th = row.find("th")
+                cur_sub = "subcommittee" in row["class"]
+
+            committee = dict(zip(keys, [cur_th] + row.find_all("td")))
+            y = {
+                "name": committee["name"].text.strip(),
+                "date": _parse_date_time(committee["date"].text.strip()),
+                "activity": committee["activity"].text.strip(),
+                "related_documents": [
+                    {
+                        "text": link.text.strip(),
+                        "url": link["href"]
+                        if link["href"].startswith("http")
+                        else "https://www.congress.gov" + link["href"],
+                    }
+                    for link in committee["related documents"].find_all("a")
+                ],
+                "is_subcommittee": cur_sub,
+            }
+            committees.append(y)
+    else:
+        raise ValueError(f"Invalid columns: {x} ({bill['source']})")
+
+    bill["committees"] = committees
+
+    return bill
+
+
 def parse(congress: int, logger: logging.Logger = None):
     client = MongoClient()
     db = client.federal
@@ -720,6 +824,15 @@ def parse(congress: int, logger: logging.Logger = None):
             bill = parse_titles(bill, bill_soup, logger=logger)
             bill = parse_actions(bill, bill_soup, logger=logger)
             bill = parse_consponsors(bill, bill_soup, logger=logger)
+            bill = parse_committees(bill, bill_soup, logger=logger)
+            # try:
+
+            # except Exception as e:
+            #     print(f"Error parsing: {e}")
+            #     print(bill["source"])
+            #     print()
+            #     print()
+            #     exit()
 
             # save updated bill
             collection.update_one(
