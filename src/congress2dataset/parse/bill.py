@@ -26,7 +26,9 @@ def read_local_html(path: str) -> BeautifulSoup:
     return BeautifulSoup(html, "html.parser")
 
 
-def read_local_db(congress: int, bill_type: str, i: int, bill_collection: Collection) -> dict:
+def read_local_db(
+    congress: int, bill_type: str, i: int, bill_collection: Collection
+) -> dict:
     """
     Retrieves a bill from the local database based on the given parameters.
 
@@ -115,7 +117,9 @@ def parse_overview_sponsor(string: str) -> dict:
     return out
 
 
-def parse_overview(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None) -> dict:
+def parse_overview(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
     """
     Parses the overview table of a bill and updates the bill dictionary with the parsed information.
 
@@ -127,7 +131,7 @@ def parse_overview(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger 
     Returns:
         dict: The updated bill dictionary.
     """
-    
+
     # obtain overview table
     overview = (
         bill_soup.find("div", class_="overview_wrapper bill")
@@ -210,7 +214,7 @@ def parse_authority_statement(soup: BeautifulSoup) -> str:
     Returns:
         str: The parsed constitutional authority statement.
     """
-    
+
     script_tag = soup.find("script").string
 
     # Extract the part of the script with the constitutional authority statement
@@ -273,7 +277,9 @@ def parse_cbo_estimates(soup: BeautifulSoup) -> list[dict]:
     return cbo_estimates
 
 
-def parse_tertiary(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None) -> dict:
+def parse_tertiary(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
     """
     Parses the tertiary section of a bill's overview and updates the bill dictionary with the parsed information.
 
@@ -285,7 +291,7 @@ def parse_tertiary(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger 
     Returns:
         dict: The updated bill dictionary.
     """
-    
+
     overview = bill_soup.find("div", class_="overview_wrapper bill").find(
         "div", class_="tertiary"
     )
@@ -319,7 +325,9 @@ def parse_tertiary(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger 
     return bill
 
 
-def parse_titles(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None) -> dict:
+def parse_titles(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
     """
     Parses the titles of a bill from the given BeautifulSoup object.
 
@@ -405,7 +413,9 @@ def parse_titles(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = 
     return bill
 
 
-def parse_actions(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None) -> dict:
+def parse_actions(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
     """
     Parse the actions of a bill from the given BeautifulSoup object and update the bill dictionary.
 
@@ -453,32 +463,27 @@ def parse_actions(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger =
     body = div.find("tbody")
 
     if x == {"date", "chamber", "all actions"}:
-        key_upd = {
-            'date': 'date',
-            'chamber': 'by',
-            'all actions': 'action'
-        }
+        key_upd = {"date": "date", "chamber": "by", "all actions": "action"}
         keys = [key_upd[col] for col in col_names]
         for row in body.find_all("tr"):
             action = dict(zip(keys, row.find_all("td")))
             y = {
-                'date': _parse_date_time(action['date'].text.strip()),
-                'by': action['by'].text.strip(),
-                'action': action['action'].text.strip(),
-                'links': [
+                "date": _parse_date_time(action["date"].text.strip()),
+                "by": action["by"].text.strip(),
+                "action": action["action"].text.strip(),
+                "links": [
                     {
-                        'text': link.text.strip(),
-                        'url': link['href'] if link['href'].startswith("http") else "https://www.congress.gov" + link['href']
+                        "text": link.text.strip(),
+                        "url": link["href"]
+                        if link["href"].startswith("http")
+                        else "https://www.congress.gov" + link["href"],
                     }
-                    for link in action['action'].find_all("a")
-                ]
+                    for link in action["action"].find_all("a")
+                ],
             }
             actions.append(y)
     elif x == {"date", "all actions"}:
-        key_upd = {
-            'date': 'date',
-            'all actions': 'action'
-        }
+        key_upd = {"date": "date", "all actions": "action"}
         keys = [key_upd[col] for col in col_names]
 
         # because no chamber key, by is now frequently mentioned
@@ -492,11 +497,11 @@ def parse_actions(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger =
 
         for row in body.find_all("tr"):
             action = dict(zip(keys, row.find_all("td")))
-            by = action['action'].find("span")
-            action_text = action['action'].text.strip()
+            by = action["action"].find("span")
+            action_text = action["action"].text.strip()
             if by is not None:
                 by = by.text.strip()
-                if by == '':
+                if by == "":
                     by = None
                 else:
                     if not by.startswith("Action By:"):
@@ -507,16 +512,18 @@ def parse_actions(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger =
                     by = by.replace("Action By:", "").strip()
 
             y = {
-                'date': _parse_date_time(action['date'].text.strip()),
-                'by': by,
-                'action': action_text,
-                'links': [
+                "date": _parse_date_time(action["date"].text.strip()),
+                "by": by,
+                "action": action_text,
+                "links": [
                     {
-                        'text': link.text.strip(),
-                        'url': link['href'] if link['href'].startswith("http") else "https://www.congress.gov" + link['href']
+                        "text": link.text.strip(),
+                        "url": link["href"]
+                        if link["href"].startswith("http")
+                        else "https://www.congress.gov" + link["href"],
                     }
-                    for link in action['action'].find_all("a")
-                ]
+                    for link in action["action"].find_all("a")
+                ],
             }
             actions.append(y)
     else:
@@ -572,7 +579,9 @@ def parse_cosponsor(string: str) -> dict:
     return out
 
 
-def parse_consponsors(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None) -> dict:
+def parse_consponsors(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
     """
     Parse the cosponsors of a bill from the given BeautifulSoup object and update the bill dictionary.
 
@@ -600,7 +609,7 @@ def parse_consponsors(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logg
     except AttributeError:
         bill["consponsors"] = consponsors
         return bill
-    
+
     if header is None:
         bill["consponsors"] = consponsors
         return bill
@@ -612,40 +621,43 @@ def parse_consponsors(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logg
     body = div.find("tbody")
 
     if x == {"cosponsor", "date cosponsored"}:
-        key_upd = {
-            'cosponsor': 'cosponsor',
-            'date cosponsored': 'date'
-        }
+        key_upd = {"cosponsor": "cosponsor", "date cosponsored": "date"}
         keys = [key_upd[col] for col in col_names]
         for row in body.find_all("tr"):
             consponsor = dict(zip(keys, row.find_all("td")))
             y = {
-                'cosponsor': parse_cosponsor(consponsor['cosponsor'].text.strip()),
-                'date': datetime.strptime(consponsor['date'].text.strip(), "%m/%d/%Y"),
-                'withdrawn': None,
+                "cosponsor": parse_cosponsor(consponsor["cosponsor"].text.strip()),
+                "date": datetime.strptime(consponsor["date"].text.strip(), "%m/%d/%Y"),
+                "withdrawn": None,
             }
             consponsors.append(y)
-    elif x == {'cosponsors who withdrew', 'date cosponsored', 'date withdrawn', 'cr explanation'}:
+    elif x == {
+        "cosponsors who withdrew",
+        "date cosponsored",
+        "date withdrawn",
+        "cr explanation",
+    }:
         key_upd = {
-            'cosponsors who withdrew': 'cosponsor',
-            'date cosponsored': 'date',
-            'date withdrawn': 'date withdrawn',
-            'cr explanation': 'cr explanation'
+            "cosponsors who withdrew": "cosponsor",
+            "date cosponsored": "date",
+            "date withdrawn": "date withdrawn",
+            "cr explanation": "cr explanation",
         }
         keys = [key_upd[col] for col in col_names]
         for row in body.find_all("tr"):
             consponsor = dict(zip(keys, row.find_all("td")))
             y = {
-                'cosponsor': parse_cosponsor(consponsor['cosponsor'].text.strip()),
-                'date': datetime.strptime(consponsor['date'].text.strip(), "%m/%d/%Y"),
-                'withdrawn': {
-                    'date': datetime.strptime(consponsor['date withdrawn'].text.strip(), "%m/%d/%Y"),
-                    'explanation': {
-                        'text': consponsor['cr explanation'].text.strip(),
-                        'url': consponsor['cr explanation'].find("a")["href"]
-                    }
-                }
-            
+                "cosponsor": parse_cosponsor(consponsor["cosponsor"].text.strip()),
+                "date": datetime.strptime(consponsor["date"].text.strip(), "%m/%d/%Y"),
+                "withdrawn": {
+                    "date": datetime.strptime(
+                        consponsor["date withdrawn"].text.strip(), "%m/%d/%Y"
+                    ),
+                    "explanation": {
+                        "text": consponsor["cr explanation"].text.strip(),
+                        "url": consponsor["cr explanation"].find("a")["href"],
+                    },
+                },
             }
             consponsors
     else:
@@ -654,6 +666,7 @@ def parse_consponsors(bill: dict, bill_soup: BeautifulSoup, logger: logging.Logg
     bill["consponsors"] = consponsors
 
     return bill
+
 
 def parse(congress: int, logger: logging.Logger = None):
     client = MongoClient()
@@ -673,17 +686,17 @@ def parse(congress: int, logger: logging.Logger = None):
         logger.info(
             f"Parsing {congress}th congress {bill_type} bills"
         ) if logger else None
-        
+
         fs = glob(f"data/{congress}/{bill_type}-*/src.html.gz")
         fs = sorted(fs)
-        
+
         for f in tqdm(fs, desc=f"{bill_type} bills"):
             bill_soup = read_local_html(f)
             bill_dir = os.path.dirname(f)
             bill_id = os.path.basename(bill_dir)
             bill_id = bill_id.split("-")[-1]
             i = int(bill_id)
-            
+
             if not bill_soup.title.text.startswith("All Info - "):
                 logger.error(
                     f"Invalid page title: {bill_soup.title.text}"
@@ -691,7 +704,12 @@ def parse(congress: int, logger: logging.Logger = None):
                 continue
 
             bill = read_local_db(congress, bill_type, i, collection)
-            bill_ = {"congress": congress, "type": bill_type, "number": i, "source": f"https://www.congress.gov/bill/{congress}th-congress/{bill_type}/{i}/all-info/?allSummaries=show"}
+            bill_ = {
+                "congress": congress,
+                "type": bill_type,
+                "number": i,
+                "source": f"https://www.congress.gov/bill/{congress}th-congress/{bill_type}/{i}/all-info/?allSummaries=show",
+            }
             if bill is None:
                 # initial insert
                 collection.insert_one(bill_)
@@ -738,5 +756,5 @@ if __name__ == "__main__":
     # logger.info(args)
     # parse(args.congress, logger=logger)
     # logger.info(f"Parsing completed")
-    
+
     parse(args.congress)

@@ -10,7 +10,13 @@ from pymongo import MongoClient
 
 
 async def scrape(
-    congress: int, type: str, start: int, end: int, sleep: int, timeout: int = 60, logger: logging.Logger = None
+    congress: int,
+    type: str,
+    start: int,
+    end: int,
+    sleep: int,
+    timeout: int = 60,
+    logger: logging.Logger = None,
 ):
     client = MongoClient()
     db = client.federal
@@ -22,7 +28,9 @@ async def scrape(
         for i in range(start, end + 1):
             # check if the bill is already in the database
             if collection.find_one({"congress": congress, "type": type, "number": i}):
-                logger.info(f"Bill {congress}-{type}-{i} already in the database") if logger else None
+                logger.info(
+                    f"Bill {congress}-{type}-{i} already in the database"
+                ) if logger else None
                 continue
 
             # load the page
@@ -47,7 +55,7 @@ async def scrape(
             else:
                 description = await website_description.evaluate(
                     "(element) => element.content"
-                ) 
+                )
             logger.info(f"Description: {description}") if logger else None
 
             # store the html content in MongoDB
@@ -67,7 +75,9 @@ async def scrape(
                 }
             )
             # print(f"Bill {congress}-{type}-{i} saved HTML to the database")
-            logger.info(f"Bill {congress}-{type}-{i} saved HTML to the database") if logger else None
+            logger.info(
+                f"Bill {congress}-{type}-{i} saved HTML to the database"
+            ) if logger else None
 
             # sleep for a while
             await asyncio.sleep(sleep)
@@ -85,7 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--sleep", type=int, required=False, default=10)
 
     args = parser.parse_args()
-    
+
     # setup logger to write to file and console
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -98,7 +108,13 @@ if __name__ == "__main__":
         handler.setFormatter(formatter)
         handler.setLevel(logging.INFO)
         logger.addHandler(handler)
-    
-    logger.info(f"Scraping {args.congress}th congress {args.type} bills {args.start} to {args.end}")
-    
-    asyncio.run(scrape(args.congress, args.type, args.start, args.end, args.sleep, logger=logger))
+
+    logger.info(
+        f"Scraping {args.congress}th congress {args.type} bills {args.start} to {args.end}"
+    )
+
+    asyncio.run(
+        scrape(
+            args.congress, args.type, args.start, args.end, args.sleep, logger=logger
+        )
+    )
