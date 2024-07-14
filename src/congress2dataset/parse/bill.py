@@ -772,6 +772,83 @@ def parse_committees(
     return bill
 
 
+def parse_related(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
+    related = []
+
+    div = bill_soup.find("div", {"id": "relatedBills-content"})
+    if div is None:
+        bill["related"] = related
+        return bill
+
+    # parse and validate related table columns
+    head = div.find("thead")
+    if head is None:
+        bill["related"] = related
+        return bill
+
+    header = head.find("tr")
+    if header is None:
+        bill["related"] = related
+        return bill
+
+    columns = header.find_all("th")
+    col_names = [col.text.strip().lower() for col in columns]
+    col_names = [
+        "relationships to" if col.startswith("relationships to") else col
+        for col in col_names
+    ]
+    x = set(col_names)
+
+    body = div.find("tbody")
+
+    if x == {
+        "bill",
+        "latest title",
+        "relationships to",
+        "relationships identified by",
+        "latest action",
+    }:
+        key_upd = {
+            "bill": "bill",
+            "latest title": "title",
+            "relationships to": "relationship",
+            "relationships identified by": "by",
+            "latest action": "latest action",
+        }
+        keys = [key_upd[col] for col in col_names]
+
+        for row in body.find_all("tr"):
+            # skip extra rows for now
+            # check against class="relatedbill_exrow"
+            if "relatedbill_exrow" in row.get("class", []):
+                continue
+
+            related_bill = dict(zip(keys, row.find_all("td")))
+            y = {
+                "bill": {
+                    "text": related_bill["bill"].text.strip(),
+                    "url": related_bill["bill"].find("a")["href"]
+                    if "http" in related_bill["bill"].find("a")["href"]
+                    else "https://www.congress.gov"
+                    + related_bill["bill"].find("a")["href"],
+                },
+                "title": related_bill["title"].text.strip(),
+                "relationship": related_bill["relationship"].text.strip(),
+                "by": related_bill["by"].text.strip(),
+                "latest_action": related_bill["latest action"].text.strip(),
+            }
+
+            related.append(y)
+    else:
+        raise ValueError(f"Invalid columns: {x} ({bill['source']})")
+
+    bill["related"] = related
+
+    return bill
+
+
 def parse(congress: int, logger: logging.Logger = None):
     client = MongoClient()
     db = client.federal
@@ -825,8 +902,9 @@ def parse(congress: int, logger: logging.Logger = None):
             bill = parse_actions(bill, bill_soup, logger=logger)
             bill = parse_consponsors(bill, bill_soup, logger=logger)
             bill = parse_committees(bill, bill_soup, logger=logger)
+            bill = parse_related(bill, bill_soup, logger=logger)
             # try:
-
+            #     bill = parse_related(bill, bill_soup, logger=logger)
             # except Exception as e:
             #     print(f"Error parsing: {e}")
             #     print(bill["source"])
