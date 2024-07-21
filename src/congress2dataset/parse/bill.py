@@ -96,6 +96,9 @@ def parse_overview_sponsor(string: str) -> dict:
 
     out["title"] = [title for title in valid_titles if string.startswith(title)][0]
 
+    if "(Private Legislation)" in string:
+        string = string.replace("(Private Legislation)", "").strip()
+
     string = string.lstrip(out["title"]).strip()
     string = " (".join(string.split(" (")[:-1])
 
