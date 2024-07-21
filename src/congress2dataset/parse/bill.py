@@ -885,6 +885,34 @@ def parse_subjects(
     return bill
 
 
+def parse_summaries(
+    bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
+) -> dict:
+    summaries = []
+
+    div = bill_soup.find("div", {"id": "allSummaries-content"})
+    if div is None:
+        bill["summaries"] = summaries
+        return bill
+
+    for sum_div in div.find_all("div", recursive=False):
+        if sum_div.get("id").startswith("summary-"):
+            summary = {
+                "title": sum_div.find("h3")
+                .text.strip()
+                .replace("Shown Here:", "")
+                .strip()
+                .split("(")[0]
+                .strip(),
+                "text": "\n".join([p.text for p in sum_div.find_all("p")]),
+            }
+            summaries.append(summary)
+
+    bill["summaries"] = summaries
+
+    return bill
+
+
 def parse(congress: int, logger: logging.Logger = None):
     client = MongoClient()
     db = client.federal
@@ -940,6 +968,7 @@ def parse(congress: int, logger: logging.Logger = None):
             bill = parse_committees(bill, bill_soup, logger=logger)
             bill = parse_related(bill, bill_soup, logger=logger)
             bill = parse_subjects(bill, bill_soup, logger=logger)
+            bill = parse_summaries(bill, bill_soup, logger=logger)
 
             # save updated bill
             collection.update_one(
