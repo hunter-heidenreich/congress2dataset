@@ -247,7 +247,18 @@ def parse_authority_statement(soup: BeautifulSoup) -> str:
         return out
 
     constitutional_authority_statement = _f(bs4_html)
-    return constitutional_authority_statement.strip()
+    constitutional_authority_statement = constitutional_authority_statement.strip()
+
+    # lambda x: '\n'.join([l for l in x.split('\n') if not l.startswith('[') and not l.endswith(']') and l != ''])
+    constitutional_authority_statement = "\n".join(
+        [
+            l
+            for l in constitutional_authority_statement.split("\n")
+            if not l.startswith("[") and not l.endswith("]") and l != ""
+        ]
+    )
+
+    return constitutional_authority_statement
 
 
 def parse_cbo_estimates(soup: BeautifulSoup) -> list[dict]:
