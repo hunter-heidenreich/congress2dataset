@@ -882,6 +882,14 @@ def parse_subjects(
 
     bill["subjects"] = subjects
 
+    if (
+        len(subjects)
+        and bill["policy_area"] is None
+        and "Private Legislation" in subjects
+    ):
+        # for a subset of private legislation bills, the policy area is not present but should be
+        bill["policy_area"] = "Private Legislation"
+
     return bill
 
 
