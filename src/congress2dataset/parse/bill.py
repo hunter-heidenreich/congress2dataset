@@ -394,7 +394,7 @@ def parse_titles(
                                     else "short",
                                     "chamber": chamber,
                                     "title": txt,
-                                    "label": h4.text,
+                                    "label": h4.text.split('as')[-1].split('for')[0].strip(),
                                 }
                             )
                     else:
@@ -412,7 +412,7 @@ def parse_titles(
                                     else "short",
                                     "chamber": chamber,
                                     "title": li.text,
-                                    "label": h5.text,
+                                    "label": h5.text.split('as')[-1].split('for')[0].strip(),
                                 }
                             )
                     else:
@@ -614,18 +614,18 @@ def parse_consponsors(
 
     div = bill_soup.find("div", {"id": "cosponsors-content"})
     if div is None:
-        bill["consponsors"] = consponsors
+        bill["cosponsors"] = consponsors
         return bill
 
     # parse and validate cosponsors table columns
     try:
         header = div.find("thead").find("tr")
     except AttributeError:
-        bill["consponsors"] = consponsors
+        bill["cosponsors"] = consponsors
         return bill
 
     if header is None:
-        bill["consponsors"] = consponsors
+        bill["cosponsors"] = consponsors
         return bill
 
     columns = header.find_all("th")
@@ -677,7 +677,7 @@ def parse_consponsors(
     else:
         raise ValueError(f"Invalid columns: {x} ({bill['source']})")
 
-    bill["consponsors"] = consponsors
+    bill["cosponsors"] = consponsors
 
     return bill
 
