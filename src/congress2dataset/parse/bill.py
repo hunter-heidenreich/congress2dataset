@@ -394,7 +394,9 @@ def parse_titles(
                                     else "short",
                                     "chamber": chamber,
                                     "title": txt,
-                                    "label": h4.text.split('as')[-1].split('for')[0].strip(),
+                                    "label": h4.text.split("as")[-1]
+                                    .split("for")[0]
+                                    .strip(),
                                 }
                             )
                     else:
@@ -412,7 +414,9 @@ def parse_titles(
                                     else "short",
                                     "chamber": chamber,
                                     "title": li.text,
-                                    "label": h5.text.split('as')[-1].split('for')[0].strip(),
+                                    "label": h5.text.split("as")[-1]
+                                    .split("for")[0]
+                                    .strip(),
                                 }
                             )
                     else:
@@ -841,17 +845,21 @@ def parse_related(
 
             related_bill = dict(zip(keys, row.find_all("td")))
             y = {
-                "bill": {
-                    "text": related_bill["bill"].text.strip(),
-                    "url": related_bill["bill"].find("a")["href"]
-                    if "http" in related_bill["bill"].find("a")["href"]
-                    else "https://www.congress.gov"
-                    + related_bill["bill"].find("a")["href"],
-                },
-                "title": related_bill["title"].text.strip(),
-                "relationship": related_bill["relationship"].text.strip(),
+                # "bill": {
+                # "text": related_bill["bill"].text.strip(),
+                "url": related_bill["bill"].find("a")["href"]
+                if "http" in related_bill["bill"].find("a")["href"]
+                else "https://www.congress.gov"
+                + related_bill["bill"].find("a")["href"],
+                # },
+                # "title": related_bill["title"].text.strip(),
+                "relationship": "Procedurally related"
+                if related_bill["relationship"]
+                .text.strip()
+                .startswith("Procedurally related")
+                else related_bill["relationship"].text.strip(),
                 "by": related_bill["by"].text.strip(),
-                "latest_action": related_bill["latest action"].text.strip(),
+                # "latest_action": related_bill["latest action"].text.strip(),
             }
 
             related.append(y)
