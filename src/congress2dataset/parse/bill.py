@@ -1,6 +1,7 @@
 import gzip
 import logging
 import os
+import re
 from argparse import ArgumentParser
 from datetime import datetime
 from glob import glob
@@ -393,9 +394,9 @@ def parse_titles(
                                     if "Official" in h4.text
                                     else "short",
                                     "chamber": chamber,
-                                    "title": txt,
-                                    "label": h4.text.split("as")[-1]
-                                    .split("for")[0]
+                                    "text": txt,
+                                    "label": h4.text.split(" as ")[-1]
+                                    .split(" for ")[0]
                                     .strip(),
                                 }
                             )
@@ -413,9 +414,9 @@ def parse_titles(
                                     if "Official" in h5.text
                                     else "short",
                                     "chamber": chamber,
-                                    "title": li.text,
-                                    "label": h5.text.split("as")[-1]
-                                    .split("for")[0]
+                                    "text": li.text,
+                                    "label": h5.text.split(" as ")[-1]
+                                    .split(" for ")[0]
                                     .strip(),
                                 }
                             )
@@ -597,7 +598,7 @@ def parse_cosponsor(string: str) -> dict:
     return out
 
 
-def parse_consponsors(
+def parse_cosponsors(
     bill: dict, bill_soup: BeautifulSoup, logger: logging.Logger = None
 ) -> dict:
     """
@@ -614,22 +615,22 @@ def parse_consponsors(
     Raises:
         ValueError: If the columns in the cosponsors table are invalid.
     """
-    consponsors = []
+    cosponsors = []
 
     div = bill_soup.find("div", {"id": "cosponsors-content"})
     if div is None:
-        bill["cosponsors"] = consponsors
+        bill["cosponsors"] = cosponsors
         return bill
 
     # parse and validate cosponsors table columns
     try:
         header = div.find("thead").find("tr")
     except AttributeError:
-        bill["cosponsors"] = consponsors
+        bill["cosponsors"] = cosponsors
         return bill
 
     if header is None:
-        bill["cosponsors"] = consponsors
+        bill["cosponsors"] = cosponsors
         return bill
 
     columns = header.find_all("th")
@@ -642,13 +643,13 @@ def parse_consponsors(
         key_upd = {"cosponsor": "cosponsor", "date cosponsored": "date"}
         keys = [key_upd[col] for col in col_names]
         for row in body.find_all("tr"):
-            consponsor = dict(zip(keys, row.find_all("td")))
+            cosponsor = dict(zip(keys, row.find_all("td")))
             y = {
-                "cosponsor": parse_cosponsor(consponsor["cosponsor"].text.strip()),
-                "date": datetime.strptime(consponsor["date"].text.strip(), "%m/%d/%Y"),
+                "cosponsor": parse_cosponsor(cosponsor["cosponsor"].text.strip()),
+                "date": datetime.strptime(cosponsor["date"].text.strip(), "%m/%d/%Y"),
                 "withdrawn": None,
             }
-            consponsors.append(y)
+            cosponsors.append(y)
     elif x == {
         "cosponsors who withdrew",
         "date cosponsored",
@@ -663,25 +664,25 @@ def parse_consponsors(
         }
         keys = [key_upd[col] for col in col_names]
         for row in body.find_all("tr"):
-            consponsor = dict(zip(keys, row.find_all("td")))
+            cosponsor = dict(zip(keys, row.find_all("td")))
             y = {
-                "cosponsor": parse_cosponsor(consponsor["cosponsor"].text.strip()),
-                "date": datetime.strptime(consponsor["date"].text.strip(), "%m/%d/%Y"),
+                "cosponsor": parse_cosponsor(cosponsor["cosponsor"].text.strip()),
+                "date": datetime.strptime(cosponsor["date"].text.strip(), "%m/%d/%Y"),
                 "withdrawn": {
                     "date": datetime.strptime(
-                        consponsor["date withdrawn"].text.strip(), "%m/%d/%Y"
+                        cosponsor["date withdrawn"].text.strip(), "%m/%d/%Y"
                     ),
                     "explanation": {
-                        "text": consponsor["cr explanation"].text.strip(),
-                        "url": consponsor["cr explanation"].find("a")["href"],
+                        "text": cosponsor["cr explanation"].text.strip(),
+                        "url": cosponsor["cr explanation"].find("a")["href"],
                     },
                 },
             }
-            consponsors
+            cosponsors.append(y)
     else:
         raise ValueError(f"Invalid columns: {x} ({bill['source']})")
 
-    bill["cosponsors"] = consponsors
+    bill["cosponsors"] = cosponsors
 
     return bill
 
@@ -927,14 +928,40 @@ def parse_summaries(
 
     for sum_div in div.find_all("div", recursive=False):
         if sum_div.get("id").startswith("summary-"):
+            text_elements = [elem for elem in sum_div.find_all(string=True) if elem.parent.name != 'h3']
+            text = "\n".join(elem.strip() for elem in text_elements if elem.strip())
+            label = sum_div.find("h3").text.strip().replace("Shown Here:", "").strip()
+            
+            def remove_date_from_string(input_string):
+                # Define the regular expression pattern for dates in the form (mm/dd/yyyy)
+                date_pattern = r'\((\d{2}/\d{2}/\d{4})\)'
+                
+                # Search for the pattern in the input string
+                match = re.search(date_pattern, input_string)
+                
+                if match:
+                    # Extract the date string from the match
+                    date_str = match.group(1)
+                    try:
+                        # Convert the date string to a datetime object
+                        date_obj = datetime.strptime(date_str, '%m/%d/%Y')
+                        # Remove the date from the input string
+                        new_string = re.sub(date_pattern, '', input_string).strip()
+                        return new_string, date_obj
+                    except ValueError:
+                        # If the date string cannot be converted to a datetime object, return None and the original string
+                        return input_string, None
+                else:
+                    # If no match is found, return the original string and None
+                    return input_string, None
+                
+            # remove the date from the label, if present
+            label, date = remove_date_from_string(label)
+
             summary = {
-                "title": sum_div.find("h3")
-                .text.strip()
-                .replace("Shown Here:", "")
-                .strip()
-                .split("(")[0]
-                .strip(),
-                "text": "\n".join([p.text for p in sum_div.find_all("p")]),
+                "label": label,
+                "date": date,
+                "text": text,
             }
             summaries.append(summary)
 
@@ -944,6 +971,7 @@ def parse_summaries(
 
 
 def parse(congress: int, logger: logging.Logger = None):
+    
     client = MongoClient()
     db = client.federal
     collection = db.bills
@@ -962,7 +990,7 @@ def parse(congress: int, logger: logging.Logger = None):
             f"Parsing {congress}th congress {bill_type} bills"
         ) if logger else None
 
-        fs = glob(f"data/{congress}/{bill_type}-*/src.html.gz")
+        fs = glob(f"data/{congress}/{bill_type}/*/src.html.gz")
         fs = sorted(fs)
 
         for f in tqdm(fs, desc=f"{bill_type} bills"):
@@ -981,7 +1009,8 @@ def parse(congress: int, logger: logging.Logger = None):
             bill = read_local_db(congress, bill_type, i, collection)
             bill_ = {
                 "congress": congress,
-                "type": bill_type,
+                "chamber": bill_type.split("-")[0],
+                "type": "-".join(bill_type.split("-")[1:]),
                 "number": i,
                 "source": f"https://www.congress.gov/bill/{congress}th-congress/{bill_type}/{i}/all-info/?allSummaries=show",
             }
@@ -994,7 +1023,7 @@ def parse(congress: int, logger: logging.Logger = None):
             bill = parse_tertiary(bill, bill_soup, logger=logger)
             bill = parse_titles(bill, bill_soup, logger=logger)
             bill = parse_actions(bill, bill_soup, logger=logger)
-            bill = parse_consponsors(bill, bill_soup, logger=logger)
+            bill = parse_cosponsors(bill, bill_soup, logger=logger)
             bill = parse_committees(bill, bill_soup, logger=logger)
             bill = parse_related(bill, bill_soup, logger=logger)
             bill = parse_subjects(bill, bill_soup, logger=logger)

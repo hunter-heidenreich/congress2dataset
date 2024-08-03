@@ -32,7 +32,7 @@ async def scrape(
             run = True
             while run:
                 # check if already have compressed html
-                if os.path.exists(f"data/117/{bill_type}-{i:06d}/bill_text.html.gz"):
+                if os.path.exists(f"data/117/{bill_type}/{i:06d}/bill_text.html.gz"):
                     logger.info(
                         f"Bill {congress}-{bill_type}-{i} already scraped"
                     ) if logger else None
@@ -64,7 +64,7 @@ async def scrape(
                 html = gzip.compress(html.encode("utf-8"))
 
                 # save local copy
-                bill_dir = f"data/117/{bill_type}-{i:06d}"
+                bill_dir = f"data/117/{bill_type}/{i:06d}"
                 os.makedirs(bill_dir, exist_ok=True)
                 with open(f"{bill_dir}/bill_text.html.gz", "wb") as f:
                     f.write(html)
